@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Agriculture Decision Support</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eceee4;--surface:#fbfcf8;--ink:#1c2a21;--mut:#5f6d63;--line:#d3dbc9;--good:#2f7d4f;--warn:#cf8a07;--crit:#b8392d;--deep:#1f3d2c;--soil:#5b4636;--water:#3b9fb0}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Public Sans",system-ui,sans-serif}
+h1,h2,.big,.v{font-family:"Fraunces",Georgia,serif}
+
+/* top bar */
+.top{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--deep);color:#eaf2e6}
+.brand{display:flex;gap:10px;align-items:center}
+.brand svg{width:30px;height:30px;animation:sway 4s ease-in-out infinite;transform-origin:50% 100%}
+.brand h1{margin:0;font-size:1.15rem}
+.link{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.link input{width:190px;padding:8px 10px;border:1px solid #3f6551;border-radius:8px;background:#173324;color:#fff;font:inherit}
+.link input::placeholder{color:#8fb09d}
+button{padding:8px 16px;border:0;border-radius:8px;background:#e8c46a;color:#2a2108;font:inherit;font-weight:600;cursor:pointer;transition:transform .15s,filter .15s}
+button:hover{filter:brightness(1.07);transform:translateY(-1px)}
+button:active{transform:translateY(0)}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #7aa7e8;outline-offset:2px}
+.state{display:flex;gap:8px;align-items:center;font-size:.9rem}
+.dot{width:11px;height:11px;border-radius:50%;background:#9aa59d}
+.dot.live{background:#47d17c;animation:ping 1.8s infinite}
+.dot.off{background:#e5675b}
+
+main{max-width:1100px;margin:0 auto;padding:22px;display:grid;gap:20px}
+
+/* hero */
+.hero{position:relative;overflow:hidden;display:flex;flex-wrap:wrap;gap:22px;align-items:center;padding:26px 28px;border-radius:18px;color:#fff;background:#6b776e;transition:background .6s}
+.hero.good{background:var(--good)}.hero.warning{background:var(--warn)}.hero.critical{background:var(--crit)}
+.hero::after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.12);animation:breathe 5s ease-in-out infinite}
+.hero.critical::before{content:"";position:absolute;inset:0;background:rgba(255,255,255,.14);animation:alarm 1.2s ease-in-out infinite}
+.badge{position:relative;z-index:1;width:74px;height:74px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.2);font-size:2rem}
+.badge::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(255,255,255,.55);animation:ring 2.2s ease-out infinite}
+.hero .txt{position:relative;z-index:1}
+.big{font-size:2.8rem;font-weight:700;line-height:1}
+.hero p{margin:6px 0 0;opacity:.95}
+#updated.tick{animation:tick .6s}
+
+/* sensor cards */
+.cards{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(235px,1fr))}
+.tile{--c:var(--good);background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--c);border-radius:14px;padding:16px 18px 14px;transition:border-color .4s,box-shadow .3s,transform .3s}
+.tile:hover{transform:translateY(-3px);box-shadow:0 10px 22px rgba(31,61,44,.12)}
+.tile.warn{--c:var(--warn)}.tile.crit{--c:var(--crit)}
+.tile .l{display:flex;justify-content:space-between;color:var(--mut);font-size:.9rem;font-weight:500}
+.viz{display:grid;place-items:center;height:92px;margin-top:6px}
+.v{font-size:2.1rem;font-weight:700;text-align:center;line-height:1.1}
+.v small{font-size:1rem;color:var(--mut);font-weight:400}
+svg.arc{width:150px;height:84px}
+.arc path{fill:none;stroke-width:11;stroke-linecap:round}
+.arc .bg{stroke:#e1e7d8}
+.arc .val{stroke:var(--c);stroke-dasharray:157.08;stroke-dashoffset:157.08;transition:stroke-dashoffset 1s cubic-bezier(.3,.8,.3,1),stroke .4s}
+svg.jar{width:92px;height:92px}
+.jar .shell{fill:none;stroke:var(--soil);stroke-width:3}
+.jar #water{transform:translateY(100px);transition:transform 1.2s cubic-bezier(.3,.8,.3,1)}
+.jar .wave{fill:var(--water);opacity:.85;animation:wave 3.2s linear infinite}
+.bar{position:relative;width:100%;height:16px;border-radius:9px;background:#e1e7d8;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--c);border-radius:9px;transition:width 1s cubic-bezier(.3,.8,.3,1),background .4s}
+.bar b{position:absolute;top:0;bottom:0;width:2px;background:#1c2a21;opacity:.5}
+svg.spark{width:100%;height:34px;margin-top:8px}
+.spark polyline{fill:none;stroke:var(--c);stroke-width:2;stroke-linejoin:round}
+
+/* panels */
+.two{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+h2{margin:0 0 12px;font-size:1.15rem}
+ul{margin:0;padding:0;list-style:none;display:grid;gap:10px}
+li.rec{display:flex;gap:12px;align-items:flex-start;padding:11px 13px;border-left:5px solid var(--good);background:#fff;border-radius:8px}
+li.rec.warning{border-color:var(--warn)}li.rec.critical{border-color:var(--crit)}
+li.rec .ic{font-size:1.4rem;line-height:1.2}
+li.rec b{display:block}
+.fresh li{animation:slide .5s both}
+.fresh li:nth-child(2){animation-delay:.08s}.fresh li:nth-child(3){animation-delay:.16s}.fresh li:nth-child(4){animation-delay:.24s}
+.wx .rainbar{height:12px;border-radius:7px;background:#e1e7d8;overflow:hidden;margin:6px 0 10px}
+.wx .rainbar i{display:block;height:100%;width:0;background:var(--water);transition:width 1s}
+.wx .num{font-family:"Fraunces",serif;font-size:1.6rem;font-weight:700}
+.muted{color:var(--mut)}
+
+/* settings */
+details{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px 20px}
+summary{cursor:pointer;padding:12px 0;font-weight:600}
+.form{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));padding-bottom:16px}
+label{display:block;font-size:.85rem;color:var(--mut);margin-bottom:3px}
+.form input{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* load-in */
+.reveal{opacity:0;animation:rise .6s ease forwards;animation-delay:calc(var(--i,0) * .09s)}
+
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes slide{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+@keyframes ping{0%{box-shadow:0 0 0 0 rgba(71,209,124,.7)}100%{box-shadow:0 0 0 12px rgba(71,209,124,0)}}
+@keyframes ring{0%{transform:scale(.9);opacity:.9}100%{transform:scale(1.35);opacity:0}}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+@keyframes alarm{0%,100%{opacity:0}50%{opacity:1}}
+@keyframes wave{to{transform:translateX(-120px)}}
+@keyframes sway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@keyframes tick{0%{opacity:.3}100%{opacity:1}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.reveal{opacity:1}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 29V13" stroke="#9bd6a8" stroke-width="2.5" stroke-linecap="round"/><path d="M16 15C8 15 5 9 5 4c7 0 11 4 11 11Z" fill="#6cc17f"/><path d="M16 19c6 0 11-3 11-9-6 0-11 3-11 9Z" fill="#9bd6a8"/></svg>
+    <h1>Smart Agriculture Decision Support</h1>
+  </div>
+  <div class="link">
+    <input id="ip" placeholder="ESP32 IP, e.g. 192.168.43.25" aria-label="ESP32 IP address">
+    <button id="go">Connect</button>
+    <span class="state"><span class="dot" id="dot"></span><span id="conn">Not connected</span></span>
+  </div>
+</header>
+
+<main>
+  <section class="hero reveal" id="hero" style="--i:0" aria-live="polite">
+    <div class="badge" id="badge">…</div>
+    <div class="txt">
+      <div class="big" id="status">Waiting</div>
+      <p><strong id="headline">No data yet</strong></p>
+      <p id="updated">Type the ESP32 IP address above and press Connect.</p>
+    </div>
+  </section>
+
+  <section class="cards">
+    <article class="tile reveal" id="t-temperature" style="--i:1">
+      <div class="l"><span>Temperature</span><span>DHT11</span></div>
+      <div class="viz"><svg class="arc" viewBox="0 0 120 70"><path class="bg" d="M10 62 A50 50 0 0 1 110 62"/><path class="val" id="arc-temperature" d="M10 62 A50 50 0 0 1 110 62"/></svg></div>
+      <div class="v"><span id="v-temperature" data-v="0">–</span><small> °C</small></div>
+      <svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none"><polyline id="s-temperature"/></svg>
+    </article>
+
+    <article class="tile reveal" id="t-humidity" style="--i:2">
+      <div class="l"><span>Humidity</span><span>DHT11</span></div>
+      <div class="viz"><svg class="arc" viewBox="0 0 120 70"><path class="bg" d="M10 62 A50 50 0 0 1 110 62"/><path class="val" id="arc-humidity" d="M10 62 A50 50 0 0 1 110 62"/></svg></div>
+      <div class="v"><span id="v-humidity" data-v="0">–</span><small> %</small></div>
+      <svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none"><polyline id="s-humidity"/></svg>
+    </article>
+
+    <article class="tile reveal" id="t-soilPct" style="--i:3">
+      <div class="l"><span>Soil moisture</span><span>Probe</span></div>
+      <div class="viz">
+        <svg class="jar" viewBox="0 0 120 120">
+          <defs><clipPath id="clip"><rect x="20" y="10" width="80" height="100" rx="12"/></clipPath></defs>
+          <g clip-path="url(#clip)"><g id="water"><path class="wave" d="M0 14 Q15 4 30 14 T60 14 T90 14 T120 14 T150 14 T180 14 T210 14 T240 14 V130 H0Z"/></g></g>
+          <rect class="shell" x="20" y="10" width="80" height="100" rx="12"/>
+        </svg>
+      </div>
+      <div class="v"><span id="v-soilPct" data-v="0">–</span><small> %</small></div>
+      <svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none"><polyline id="s-soilPct"/></svg>
+    </article>
+
+    <article class="tile reveal" id="t-gas" style="--i:4">
+      <div class="l"><span>Gas level</span><span>MQ7</span></div>
+      <div class="viz"><div class="bar"><i id="bar-gas"></i><b id="m-warn"></b><b id="m-crit"></b></div></div>
+      <div class="v"><span id="v-gas" data-v="0">–</span><small> raw</small></div>
+      <svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none"><polyline id="s-gas"/></svg>
+    </article>
+  </section>
+
+  <div class="two">
+    <section class="panel reveal" style="--i:5"><h2>What to do now</h2><ul id="recs"><li class="rec"><span class="ic">⏳</span><div><b>Waiting for data</b>Advice appears when the first reading arrives.</div></li></ul></section>
+    <section class="panel wx reveal" style="--i:6"><h2>Weather (next 12 hours)</h2><div id="wx" class="muted">Add a city and an OpenWeatherMap key in settings to see the forecast. The dashboard works without it.</div></section>
+  </div>
+
+  <details class="reveal" style="--i:7">
+    <summary>Settings, calibration and limits</summary>
+    <div class="form">
+      <div><label for="every">Refresh every (seconds)</label><input id="every" type="number" value="3" min="1"></div>
+      <div><label for="city">City for weather</label><input id="city" value="Mumbai"></div>
+      <div><label for="key">Weather</label><input id="key" placeholder="paste key (optional)"></div>
+      <div><label>Soil reading: dry / in water</label><div class="pair"><input id="dry" type="number" value="3200" aria-label="Dry reading"><input id="wet" type="number" value="1400" aria-label="Wet reading"></div></div>
+      <div><label>Irrigate below % / waterlogged above %</label><div class="pair"><input id="soilLo" type="number" value="30" aria-label="Irrigate below"><input id="soilHi" type="number" value="85" aria-label="Waterlogged above"></div></div>
+      <div><label>Heat warning / critical (°C)</label><div class="pair"><input id="tW" type="number" value="32" aria-label="Heat warning"><input id="tC" type="number" value="38" aria-label="Heat critical"></div></div>
+      <div><label>Gas warning / critical (raw)</label><div class="pair"><input id="gW" type="number" value="1500" aria-label="Gas warning"><input id="gC" type="number" value="2500" aria-label="Gas critical"></div></div>
+    </div>
+    <p class="muted" style="margin-top:0;padding-bottom:12px">Limits apply on the next reading. Your values are remembered in this browser. Replace the placeholder limits with values for your chosen crop.</p>
+  </details>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const num = id => parseFloat($(id).value);
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* remember settings */
+const FIELDS = ['ip','every','city','key','dry','wet','soilLo','soilHi','tW','tC','gW','gC'];
+const load = () => { try { return JSON.parse(localStorage.getItem('agri') || '{}'); } catch { return {}; } };
+const save = o => { try { localStorage.setItem('agri', JSON.stringify(o)); } catch {} };
+const saved = load();
+FIELDS.forEach(f => {
+  if (saved[f] !== undefined) $(f).value = saved[f];
+  $(f).addEventListener('change', () => { const o = load(); o[f] = $(f).value; save(o); placeMarks(); });
+});
+
+const hist = {}; let rain = null, timer = null, fails = 0, lastRecKey = '', last = null;
+
+function placeMarks(){
+  $('m-warn').style.left = Math.min(100, num('gW') / 4095 * 100) + '%';
+  $('m-crit').style.left = Math.min(100, num('gC') / 4095 * 100) + '%';
+}
+placeMarks();
+
+function soilPct(raw){                       // resistive probe: higher reading = drier
+  const dry = num('dry'), wet = num('wet');
+  return Math.max(0, Math.min(100, (dry - raw) / (dry - wet) * 100));
+}
+
+function countTo(el, to, dec){
+  const from = parseFloat(el.dataset.v) || 0; el.dataset.v = to;
+  if (reduce) { el.textContent = to.toFixed(dec); return; }
+  const t0 = performance.now();
+  (function step(t){
+    const p = Math.min(1, (t - t0) / 800), e = 1 - Math.pow(1 - p, 3);
+    el.textContent = (from + (to - from) * e).toFixed(dec);
+    if (p < 1) requestAnimationFrame(step);
+  })(t0);
+}
+
+function evaluate(d){
+  const out = [], add = (level, ic, title, msg) => out.push({level, ic, title, msg});
+  const rainSoon = rain && rain.pop >= 0.6;
+  if (d.soilPct < num('soilLo')) {
+    if (rainSoon) add('good', '🌧️', 'Suppress irrigation', `Soil is dry (${d.soilPct.toFixed(0)}%) but rain is likely (${Math.round(rain.pop * 100)}% chance). Wait.`);
+    else add('warning', '💧', 'Irrigate', `Soil moisture is ${d.soilPct.toFixed(0)}%, below the ${num('soilLo')}% limit.`);
+  } else if (d.soilPct > num('soilHi')) add('warning', '🚫', 'Hold irrigation', `Soil moisture is ${d.soilPct.toFixed(0)}%. Waterlogging risk.`);
+
+  if (d.temperature >= num('tC')) add('critical', '🔥', 'Heat stress', `${d.temperature}°C is at or above the critical limit.`);
+  else if (d.temperature >= num('tW') || (rain && rain.tmax >= num('tC'))) add('warning', '🌡️', 'Heat-stress watch', `Now ${d.temperature}°C${rain ? `, forecast high ${rain.tmax.toFixed(0)}°C` : ''}.`);
+
+  if (d.gas >= num('gC')) add('critical', '☠️', 'Ventilate now', 'Gas level is critical. Open vents and keep people out of enclosed areas.');
+  else if (d.gas >= num('gW')) add('warning', '🌬️', 'Ventilate', 'Gas level is rising.');
+  else if (d.humidity > 85 && d.temperature > 30) add('warning', '🌬️', 'Ventilate', 'High heat and humidity. Disease risk.');
+
+  if (!out.length) add('good', '✅', 'All clear', 'Readings are within limits. No action needed.');
+  return out;
+}
+
+function tileLevel(k, d){
+  if (k === 'temperature') return d.temperature >= num('tC') ? 'crit' : d.temperature >= num('tW') ? 'warn' : '';
+  if (k === 'humidity')    return d.humidity > 85 ? 'warn' : '';
+  if (k === 'soilPct')     return (d.soilPct < num('soilLo') || d.soilPct > num('soilHi')) ? 'warn' : '';
+  return d.gas >= num('gC') ? 'crit' : d.gas >= num('gW') ? 'warn' : '';
+}
+
+const clamp = x => Math.max(0, Math.min(1, x));
+
+function render(d){
+  last = d;
+  const recs = evaluate(d);
+  const rank = {good:0, warning:1, critical:2};
+  const worst = recs.reduce((m, r) => rank[r.level] > rank[m] ? r.level : m, 'good');
+  $('hero').className = 'hero ' + worst;
+  $('badge').textContent = {good:'✓', warning:'!', critical:'⚠'}[worst];
+  $('status').textContent = worst[0].toUpperCase() + worst.slice(1);
+  $('headline').textContent = recs.filter(r => r.level === worst).map(r => r.title).join(', ');
+  const up = $('updated'); up.textContent = 'Updated ' + new Date().toLocaleTimeString();
+  up.classList.remove('tick'); void up.offsetWidth; up.classList.add('tick');
+
+  const key = recs.map(r => r.title + r.msg).join('|');
+  if (key !== lastRecKey) {
+    lastRecKey = key;
+    const ul = $('recs'); ul.classList.remove('fresh'); void ul.offsetWidth; ul.classList.add('fresh');
+    ul.innerHTML = recs.map(r => `<li class="rec ${r.level}"><span class="ic">${r.ic}</span><div><b>${r.title}</b>${r.msg}</div></li>`).join('');
+  }
+
+  const L = 157.08;
+  $('arc-temperature').style.strokeDashoffset = L * (1 - clamp(d.temperature / 50));
+  $('arc-humidity').style.strokeDashoffset    = L * (1 - clamp(d.humidity / 100));
+  $('water').style.transform = `translateY(${100 - d.soilPct}px)`;
+  $('bar-gas').style.width = clamp(d.gas / 4095) * 100 + '%';
+
+  [['temperature',1],['humidity',1],['soilPct',0],['gas',0]].forEach(([k, dec]) => {
+    $('t-' + k).className = 'tile ' + tileLevel(k, d);
+    countTo($('v-' + k), d[k], dec);
+    const h = hist[k] = (hist[k] || []).concat(d[k]).slice(-30);
+    const mn = Math.min(...h), mx = Math.max(...h), rg = (mx - mn) || 1;
+    $('s-' + k).setAttribute('points', h.map((y, i) => `${i / Math.max(h.length - 1, 1) * 100},${28 - (y - mn) / rg * 26}`).join(' '));
+  });
+}
+
+async function poll(){
+  const ip = $('ip').value.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  if (!ip) { setState('off', 'Enter the ESP32 IP address'); return; }
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 2500);
+  try {
+    const r = await fetch(`http://${ip}/data`, {signal: ctl.signal, cache: 'no-store'});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    d.soilPct = soilPct(d.soil);
+    fails = 0;
+    setState('live', d.dhtOk === false ? 'Connected (DHT11 not reading)' : 'Connected to ' + ip);
+    render(d);
+  } catch (e) {
+    fails++;
+    setState(fails >= 2 ? 'off' : '', fails >= 2 ? 'ESP32 unreachable: check IP, WiFi, power' : 'Retrying…');
+  } finally { clearTimeout(to); }
+}
+
+function setState(cls, text){ $('dot').className = 'dot ' + cls; $('conn').textContent = text; }
+
+function toggle(){
+  if (timer) { clearInterval(timer); timer = null; $('go').textContent = 'Connect'; setState('', 'Stopped'); return; }
+  $('go').textContent = 'Stop'; setState('', 'Connecting…');
+  poll(); timer = setInterval(poll, Math.max(1, num('every')) * 1000);
+  fetchWeather();
+}
+$('go').onclick = toggle;
+$('ip').addEventListener('keydown', e => { if (e.key === 'Enter' && !timer) toggle(); });
+
+async function fetchWeather(){
+  if (!$('key').value || !$('city').value) return;
+  try {
+    const r = await fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent($('city').value)}&units=metric&cnt=4&appid=${$('key').value}`);
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    rain = {pop: Math.max(...j.list.map(x => x.pop || 0)), tmax: Math.max(...j.list.map(x => x.main.temp_max))};
+    $('wx').innerHTML = `<div>Rain chance <span class="num">${Math.round(rain.pop * 100)}%</span></div>
+      <div class="rainbar"><i id="rb"></i></div>
+      <div>Forecast high <span class="num">${rain.tmax.toFixed(1)}°C</span></div>
+      <div class="muted">${j.city ? j.city.name : ''}</div>`;
+    requestAnimationFrame(() => { const b = $('rb'); if (b) b.style.width = rain.pop * 100 + '%'; });
+    if (last) render(last);
+  } catch (e) { $('wx').textContent = 'Weather unavailable (' + e.message + '). Check the city name and API key.'; }
+}
+setInterval(fetchWeather, 30 * 60 * 1000);
+</script>
+</body>
+</html>
