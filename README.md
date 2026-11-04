@@ -1,196 +1,285 @@
-# IoT-Based Smart Agriculture Monitoring System
 
-An Internet of Everything (IoE) prototype for monitoring agricultural conditions
-with an ESP32 and a browser-based decision-support dashboard. The system reads
-temperature, humidity, soil wetness, and a raw gas-sensor signal, then presents
-live readings and configurable recommendations on the local network.
+<div align="center">
 
-This README is based on the latest project report,
-[`IOE_Sem7_Project_Report-v2.pdf`](./IOE_Sem7_Project_Report-v2.pdf), and the
-implementation currently supplied in this repository.
+# 🌱 Smart Agriculture Monitoring & Decision Support System
 
-## Features
+### Real-time field monitoring • ESP32 + Wi-Fi • Weather-aware recommendations
 
-- Live DHT11 temperature and relative-humidity readings.
-- Averaged analog readings from a resistive soil probe and MQ7 module.
-- ESP32 Wi-Fi HTTP server with a JSON endpoint at `/data`.
-- Responsive standalone dashboard with:
-  - connection status and live sensor cards;
-  - short in-session trend traces;
-  - dry-soil, waterlogging, heat, humidity, and gas advisories;
-  - editable calibration values and warning limits;
-  - optional next-12-hour weather information from OpenWeatherMap.
-- Rain-aware irrigation guidance: likely rain can suppress an irrigation
-  recommendation when the soil is currently dry.
-- Browser settings persisted with `localStorage`.
-- Reduced-motion support for users who prefer less animation.
+![ESP32](https://img.shields.io/badge/Board-ESP32-2E7D32?style=for-the-badge)
+![Arduino](https://img.shields.io/badge/Firmware-Arduino%20C%2B%2B-00878F?style=for-the-badge)
+![Web](https://img.shields.io/badge/Dashboard-HTML%20%7C%20CSS%20%7C%20JS-F7B731?style=for-the-badge)
+![Project](https://img.shields.io/badge/Subject-Internet%20of%20Everything-536DFE?style=for-the-badge)
 
-## System architecture
+**Don Bosco Institute of Technology, Mumbai**  
+**Department of Information Technology | Semester VII | A.Y. 2026–2027**
 
-```text
-DHT11 ───────────────┐
-Soil moisture probe ─┼─> ESP32 ── Wi-Fi/HTTP ──> Browser dashboard
-MQ7 module ──────────┘             /data
-                                                   └─> OpenWeatherMap (optional)
+*A working Internet of Everything (IOE) prototype that turns live sensor readings and short-term weather forecasts into useful agricultural recommendations.*
+
+</div>
+
+---
+
+## 🌿 Project Overview
+
+Conventional agricultural monitoring often depends on manual checks of soil and environmental conditions. This project offers a **browser-based, real-time monitoring system** using an **ESP32** and three sensor modules.
+
+It measures temperature, humidity, indicative soil moisture and raw gas-sensor levels. A custom dashboard displays the readings, shows short trends, and suggests actions based on configurable thresholds and an OpenWeatherMap forecast.
+
+> [!IMPORTANT]
+> **This is a monitoring and decision-support project, not an automatic irrigation system.** There is **no pump, relay, valve, or fan control**. The user decides whether to act on each recommendation.
+
+## ✨ Key Features
+
+| | Feature | Description |
+|:--:|---|---|
+| 🌡️ | **Live environmental monitoring** | Temperature and humidity from DHT11 |
+| 💧 | **Soil moisture estimation** | Relative percentage from adjustable dry/wet calibration |
+| 🌫️ | **Gas-level indicator** | Raw MQ7 ADC readings with warning limits |
+| 📡 | **ESP32 Wi-Fi server** | Local HTTP endpoint returning JSON at `/data` |
+| 📊 | **Interactive dashboard** | Animated gauges, sensor cards and recent trend lines |
+| 🌦️ | **Weather integration** | OpenWeatherMap forecast for the selected city |
+| 🧠 | **Smart recommendations** | Irrigation, rain, waterlogging, heat and ventilation advice |
+| ⚙️ | **Custom settings** | Adjustable thresholds, calibration and refresh interval |
+
+## 🧩 System Architecture
+
+```mermaid
+flowchart TD
+    A["🌡️ DHT11<br/>Temperature + Humidity"] --> D["ESP32<br/>Sensor Acquisition + Wi-Fi"]
+    B["💧 Soil Moisture Sensor<br/>Raw ADC"] --> D
+    C["🌫️ MQ7 Sensor<br/>Raw ADC"] --> D
+    D -->|"HTTP GET /data (JSON)"| E["💻 Local Web Dashboard"]
+    W["🌦️ OpenWeatherMap API<br/>Next ~12 Hours"] --> E
+    E --> F["Calibration + Rule-Based Analysis"]
+    F --> G["Live Status • Alerts • Recommendations"]
+    G --> H["👨‍🌾 User Takes Action Manually"]
 ```
 
-The ESP32 performs sensor acquisition and serves the latest cached readings.
-The browser performs calibration, threshold evaluation, visualization, and
-weather-aware recommendations. No cloud database or automatic actuator control
-is included.
+**IOE pillars:** **Things** (sensors + ESP32) · **Data** (measurements + forecast) · **Process** (threshold checks) · **People** (farmer/operator).
 
-## Repository contents
+## 🔩 Hardware & Pin Connections
 
-| File | Purpose |
-| --- | --- |
-| [`smart_agri_dashboard_v2.html`](./smart_agri_dashboard_v2.html) | Standalone HTML, CSS, and JavaScript dashboard |
-| [`esp32_web_server/esp32_web_server.ino`](./esp32_web_server/esp32_web_server.ino) | ESP32 firmware and HTTP server |
-| [`IOE_Sem7_Project_Report-v2.pdf`](./IOE_Sem7_Project_Report-v2.pdf) | Latest project report |
-| [`IOE_Sem7_Project_Report-v2.docx`](./IOE_Sem7_Project_Report-v2.docx) | Editable copy of the latest report |
+| Component | ESP32 connection | Purpose |
+|---|---|---|
+| DHT11 DATA | `GPIO 4` | Digital temperature/humidity |
+| Soil moisture sensor AO | `GPIO 34` | Analog moisture reading |
+| MQ7 sensor AO | `GPIO 35` | Analog gas-level reading |
+| Sensor VCC | `3.3V` | Power used in our working prototype |
+| Sensor GND | `GND` | Common ground |
 
-## Hardware
+**Other items:** ESP32 development board, breadboard, jumper wires, USB cable, Wi-Fi connection and laptop/mobile browser.
 
-- ESP32 development board
-- DHT11 temperature and humidity sensor
-- Resistive soil-moisture probe/module
-- MQ7 gas-sensor module
-- Jumper wires and a suitable power/USB connection
+> [!CAUTION]
+> ESP32 GPIO pins are **not 5 V tolerant**. Check the output voltage of each sensor module before connecting it. The MQ7 values here are **uncalibrated raw ADC measurements**, **not CO concentration in ppm**, and must not be used as a certified safety alarm.
 
-### Pin mapping
+## 📂 Project Structure
 
-| Component | ESP32 pin | Firmware meaning |
-| --- | --- | --- |
-| DHT11 data | GPIO 4 | Digital temperature/humidity input |
-| Soil probe analog output | GPIO 34 | ADC1 soil reading |
-| MQ7 analog output | GPIO 35 | ADC1 gas reading |
+```text
+Smart-Agriculture-IOE/
+│
+├── esp32_web_server.ino          # ESP32 Arduino firmware
+├── smart_agri_dashboard_v2.html  # Browser dashboard
+└── README.md                     # Project guide
+```
 
-GPIO 34 and GPIO 35 are input-only ADC1 pins. Ensure that every module shares
-ESP32 ground and that analog outputs do not exceed the ESP32 input voltage.
-The firmware comment specifically requires a voltage divider if the MQ7 module
-is operated at 5 V.
+## 🚀 Setup & Installation
 
-## Software requirements
+### 1️⃣ Prepare Arduino IDE
 
-- Arduino IDE or another ESP32-compatible Arduino build environment.
-- ESP32 board support package.
-- Arduino libraries:
-  - `DHT sensor library` by Adafruit
-  - `Adafruit Unified Sensor`
-- A modern browser with JavaScript enabled.
-- Optional: an OpenWeatherMap API key for forecast-aware advice.
+1. Install the **Arduino IDE**.
+2. Install the **ESP32 board package** from **Boards Manager**.
+3. From **Library Manager**, install:
+   - **DHT sensor library** by Adafruit
+   - **Adafruit Unified Sensor**
+4. The `WiFi.h` and `WebServer.h` libraries come with the ESP32 board package.
 
-## Setup
+### 2️⃣ Configure & Upload the Firmware
 
-### 1. Configure and upload the firmware
+Open `esp32_web_server.ino`, then replace the Wi-Fi values with your own:
 
-1. Open [`esp32_web_server.ino`](./esp32_web_server/esp32_web_server.ino) in
-   Arduino IDE.
-2. Set `WIFI_SSID` and `WIFI_PASS` for the local 2.4 GHz Wi-Fi network.
-3. Confirm the sensor wiring and pin assignments.
-4. Select the connected ESP32 board and port, then upload the sketch.
-5. Open Serial Monitor at `115200` baud.
-6. Wait for the printed local IP address.
+```cpp
+const char* WIFI_SSID = "YOUR_WIFI_NAME";
+const char* WIFI_PASS = "YOUR_WIFI_PASSWORD";
+```
 
-Do not publish Wi-Fi credentials or API keys in a repository. The values
-currently present in the firmware should be treated as exposed and rotated
-before deployment.
+Select the correct ESP32 board and COM port, then click **Upload**.
 
-### 2. Open the dashboard
+Open the **Serial Monitor at 115200 baud** to view the device's IP address.
 
-Open [`smart_agri_dashboard_v2.html`](./smart_agri_dashboard_v2.html) directly
-in a browser. Enter the ESP32 IP address in the top bar and select
-**Connect**. The browser polls the ESP32 every three seconds by default.
+> The weather API constants in the Arduino sketch are not used by the current firmware. Weather requests are made by the **browser dashboard**, where the user enters the API key.
 
-If the browser blocks requests from a local `file:` page, serve the project
-directory with any simple static HTTP server and open the resulting local URL.
-The ESP32 endpoint enables CORS for this browser-based setup.
+### 3️⃣ Verify ESP32 Data
 
-### 3. Enable weather (optional)
+On a device that can reach your ESP32 through the local network, open:
 
-In **Settings, calibration and limits**:
+```text
+http://YOUR_ESP32_IP/data
+```
 
-1. Enter a city.
-2. Enter an OpenWeatherMap API key.
-3. Connect to the ESP32.
-
-The dashboard uses the forecast endpoint to inspect four three-hour forecast
-samples. Sensor monitoring continues to work when weather is not configured or
-temporarily unavailable.
-
-## HTTP API
-
-`GET http://<ESP32-IP>/data`
-
-Example response:
+Example response (**illustrative values**):
 
 ```json
 {
-  "temperature": 28.4,
-  "humidity": 67.0,
+  "temperature": 29.5,
+  "humidity": 65.2,
   "soil": 2700,
-  "gas": 420,
+  "gas": 850,
   "dhtOk": true
 }
 ```
 
-| Field | Description |
-| --- | --- |
-| `temperature` | DHT11 temperature in degrees Celsius |
-| `humidity` | DHT11 relative humidity percentage |
-| `soil` | Averaged raw soil-probe ADC reading; higher means drier |
-| `gas` | Averaged raw MQ7 ADC reading; higher means more gas response |
-| `dhtOk` | Whether the latest DHT11 reading was valid |
+| JSON field | Meaning |
+|---|---|
+| `temperature` | Temperature in °C |
+| `humidity` | Relative humidity in % |
+| `soil` | Soil moisture sensor raw ADC value |
+| `gas` | MQ7 raw ADC value |
+| `dhtOk` | Whether the latest DHT11 read succeeded |
 
-`GET /` returns a simple health message. The endpoint is intended for a
-trusted local network and is not an authenticated public API.
+### 4️⃣ Launch the Dashboard
 
-## Calibration and decision rules
+1. Open `smart_agri_dashboard_v2.html` **locally in your browser**.
+2. Type the ESP32 IP address in the top bar.
+3. Click **Connect**.
+4. Check the live readings, trends and **What to do now** recommendations.
+5. Open **Settings, calibration and limits** to adjust thresholds.
 
-The dashboard converts raw soil input to an indicative percentage:
+✅ **No Blynk, Firebase, MQTT or cloud database is required.** The dashboard and ESP32 communicate directly over local Wi-Fi.
+
+### 5️⃣ Enable Weather Forecasts
+
+Inside the dashboard settings:
+
+- Enter your **city** (default: Mumbai).
+- Enter a working **OpenWeatherMap API key**.
+- Connect the dashboard and view the forecast panel.
+
+The dashboard requests four forecast entries, representing approximately the **next 12 hours**, and refreshes weather data approximately every **30 minutes**.
+
+> [!NOTE]
+> The forecast needs internet access. The current dashboard saves settings, including the API key, in the browser's `localStorage`, so do not use private credentials on a shared computer.
+
+## 🧠 Decision-Support Logic
+
+The dashboard evaluates readings with **configurable, rule-based thresholds**:
+
+| Condition | Default value | Recommendation |
+|---|---:|---|
+| Dry soil | Moisture **< 30%** | 💧 Irrigate |
+| Dry soil + likely rain | Forecast rain probability **≥ 60%** | 🌧️ Wait / suppress irrigation |
+| Excess moisture | Moisture **> 85%** | 🚫 Hold irrigation |
+| High temperature | **≥ 32°C** | 🌡️ Heat-stress watch |
+| Critical temperature | **≥ 38°C** | 🔥 Heat-stress alert |
+| Elevated raw MQ7 value | **≥ 1500 ADC** | 🌬️ Ventilation warning |
+| Critical raw MQ7 value | **≥ 2500 ADC** | ⚠️ Stronger ventilation alert |
+| Hot and humid conditions | Humidity **> 85%** and temperature **> 30°C** | 🌿 Heat/humidity advisory when no gas warning takes precedence |
+
+These are **prototype defaults**, not crop-specific recommendations or calibrated gas-safety limits. The project uses **JavaScript decision rules, not machine learning**.
+
+## 💧 Soil Moisture Calibration
+
+The dashboard converts the sensor's raw analog reading to an estimated moisture percentage:
 
 ```text
-soilPct = clamp(0, 100, (dryReading - rawSoil) / (dryReading - wetReading) * 100)
+Moisture (%) = ((Dry reading − Current reading) / (Dry reading − Wet reading)) × 100
 ```
 
-Default dashboard values are:
+Default calibration values:
 
-| Setting | Default |
-| --- | ---: |
-| Dry soil ADC reading | 3200 |
-| Wet soil ADC reading | 1400 |
-| Irrigate below | 30% |
-| Waterlogging warning above | 85% |
-| Heat warning / critical | 32 / 38 °C |
-| Gas warning / critical | 1500 / 2500 raw ADC |
-| Sensor refresh interval | 3 seconds |
+- **Dry reading:** `3200`
+- **Wet reading:** `1400`
 
-These are starting points, not crop-specific or laboratory-validated limits.
-Calibrate the dry and wet values using the installed probe and adjust the
-thresholds for the crop and growing conditions.
+Example: With raw soil reading `2700`, the dashboard estimates **27.8%** moisture.
 
-## Limitations and future work
+The result is limited to **0–100%**. Replace the defaults with real sensor measurements from your setup. **Do not set dry and wet calibration readings equal.**
 
-- Soil percentage is a relative calibrated index, not volumetric water content.
-- MQ7 output is raw ADC data, not certified carbon-monoxide concentration.
-- DHT11 provides general ambient monitoring rather than high-precision
-  environmental measurement.
-- No permanent sensor-history database or remote authenticated access exists.
-- The system provides advice only; it does not operate pumps, fans, or other
-  actuators.
-- Weather information requires browser internet access and an API key.
-- Future improvements include validated sensor calibration, secure credential
-  handling, persistent history, authenticated remote access, and actuator
-  integration with appropriate safety controls.
+> Soil percentage is an **indicative relative value**, not a laboratory measurement of volumetric water content.
 
-## Testing status
+## ⏱️ Update Intervals
 
-The latest report documents functional validation using the ESP32 Serial
-Monitor, the local dashboard, and the weather panel on the prototype hardware.
-The report does not claim a calibrated reference dataset, measured water
-savings, or independently measured end-to-end latency.
+| Task | Current behavior |
+|---|---|
+| ESP32 sensor readings | Approximately every **2 seconds** |
+| Analog sensor filtering | Average of **10 samples** |
+| Dashboard polling | Every **3 seconds** by default |
+| Weather refresh | About every **30 minutes** |
+| Trend display | Last **30 measurements** in browser memory |
 
-## Project report
+## 🛠️ Troubleshooting
 
-For the complete objectives, methodology, architecture, test cases, results,
-and future-work discussion, see
-[`IOE_Sem7_Project_Report-v2.pdf`](./IOE_Sem7_Project_Report-v2.pdf).
+<details>
+<summary><b>ESP32 is not connecting to Wi-Fi</b></summary>
+
+Check the SSID, password, 2.4 GHz Wi-Fi availability, power supply and messages in Serial Monitor.
+
+</details>
+
+<details>
+<summary><b>Dashboard says ESP32 is unreachable</b></summary>
+
+Confirm the IP from Serial Monitor, ensure the browser device can reach the ESP32, and try opening `http://YOUR_ESP32_IP/data` directly.
+
+</details>
+
+<details>
+<summary><b>Temperature or humidity is missing</b></summary>
+
+Check DHT11 wiring, power and GPIO4. The endpoint reports unsuccessful DHT11 reads with `dhtOk: false`.
+
+</details>
+
+<details>
+<summary><b>Soil moisture percentage looks incorrect</b></summary>
+
+Recheck the dry/wet calibration values and the analog connection on GPIO34.
+
+</details>
+
+<details>
+<summary><b>Weather data does not appear</b></summary>
+
+Verify the OpenWeatherMap key, city spelling and browser internet connection.
+
+</details>
+
+### Known Limitations
+
+- Monitoring is available only to browsers that can reach the ESP32 on the local network.
+- No automatic irrigation or other actuator control.
+- No persistent historical database; trend lines store only recent data in memory.
+- Gas values are raw and are **not calibrated CO ppm**.
+- A disconnected device may leave the last sensor values visible; check the connection indicator.
+- Previous forecast data may remain in the recommendation logic after a weather request fails.
+
+## 🔮 Future Improvements
+
+- More robust sensor validation, calibration and stale-data handling
+- More durable capacitive soil moisture sensing
+- Secure remote monitoring and authentication
+- Persistent sensor history and analytics
+- Improved weather-data freshness and credential management
+
+**These are possible extensions; they are not features of the current project.**
+
+## 👥 Project Team
+
+| Roll No. | Name | Contribution |
+|:---:|---|:---:|
+| 07 | Harshal Bhosale | 25% |
+| 13 | Rakesh Chaudhary | 25% |
+| 15 | Pranit Chiman | 25% |
+| 73 | Om Darekar | 25% |
+
+**Project Guide:** Prof. Janhavi Baikerikar  
+**Subject:** Internet of Everything (IOE)  
+**Institute:** Don Bosco Institute of Technology, Kurla, Mumbai
+
+---
+
+<div align="center">
+
+### 🌾 Monitor Smarter. Decide Better. Farm Responsibly.
+
+**Made for an academic Internet of Everything project.**
+
+</div>
